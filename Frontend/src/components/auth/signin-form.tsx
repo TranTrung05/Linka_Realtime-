@@ -2,33 +2,37 @@ import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "../components/ui/label"
+import { Label } from "../ui/label"
 import {z} from "zod"
 import {zodResolver} from "@hookform/resolvers/zod"
 import {useForm} from "react-hook-form"
+import { useAuthStore } from "@/stores/useAuthStore"
+import { useNavigate } from "react-router"
 
-const SignUpSchema = z.object({
-  firstname: z.string().min(1, { message: "Tên không được để trống" }),
-  lastname: z.string().min(1, { message: "Họ không được để trống" }),
+const SignInSchema = z.object({
   username: z.string().min(1, { message: "Tên đăng nhập không được để trống" }),
-  email: z.string().email({ message: "Email không hợp lệ" }),
   password: z.string().min(6, { message: "Mật khẩu phải có ít nhất 6 ký tự" }),
 });
 
-type SignUpFormValues = z.infer<typeof SignUpSchema>;
-export function SignupForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+type SignInFormValues = z.infer<typeof SignInSchema>;
 
-  const {register, handleSubmit, formState: {errors, isSubmitting}} = useForm<SignUpFormValues>({
-    resolver: zodResolver(SignUpSchema)
-  });
+export function SignInForm({className, ...props}: React.ComponentProps<"div">) {
+  const {signIn} = useAuthStore();
+  const navigate = useNavigate();
+    const {register, handleSubmit, formState: {errors, isSubmitting}} = useForm<SignInFormValues>({
+        resolver: zodResolver(SignInSchema)
+      });
+    
+      const onSubmit = async(data: SignInFormValues) => {
+        // Gọi BE để signin 
+        const {username, password} = data;
+        await signIn(username, password);
+        
+        navigate("/");
+        
+      };
 
-  const onSubmit = async(data: SignUpFormValues) => {
-    // Gọi BE để signup 
-  };
-  return (
+      return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0 border-border">
         <CardContent className="grid p-0 md:grid-cols-2">
@@ -46,51 +50,10 @@ export function SignupForm({
                   />
                 </a>
 
-                <h1 className="text-2xl font-bold">Tạo tài khoản Moji</h1>
+                <h1 className="text-2xl font-bold">Chào mừng bạn quay lại!</h1>
                 <p className="text-muted-foreground text-balance">
-                  Chào mừng bạn! Hãy đăng ký để bắt đầu!
+                  Đăng nhập vào tài khoản Linka của bạn!
                 </p>
-              </div>
-
-              {/* họ & tên */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="lastname"
-                    className="block text-sm"
-                  >
-                    Họ
-                  </Label>
-                  <Input
-                    type="text"
-                    id="lastname"
-                    {...register("lastname")}
-                  />
-
-                  {errors.lastname && (
-                    <p className="text-destructive text-sm">
-                      {errors.lastname.message}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="firstname"
-                    className="block text-sm"
-                  >
-                    Tên
-                  </Label>
-                  <Input
-                    type="text"
-                    id="firstname"
-                    {...register("firstname")}
-                  />
-                  {errors.firstname && (
-                    <p className="text-destructive text-sm">
-                      {errors.firstname.message}
-                    </p>
-                  )}
-                </div>
               </div>
 
               {/* username */}
@@ -114,24 +77,6 @@ export function SignupForm({
                 )}
               </div>
 
-              {/* email */}
-              <div className="flex flex-col gap-3">
-                <Label
-                  htmlFor="email"
-                  className="block text-sm"
-                >
-                  Email
-                </Label>
-                <Input
-                  type="email"
-                  id="email"
-                  placeholder="m@gmail.com"
-                  {...register("email")}
-                />
-                {errors.email && (
-                  <p className="text-destructive text-sm">{errors.email.message}</p>
-                )}
-              </div>
 
               {/* password */}
               <div className="flex flex-col gap-3">
@@ -153,29 +98,29 @@ export function SignupForm({
                 )}
               </div>
 
-              {/* nút đăng ký */}
+              {/* nút đăng nhập */}
               <Button
                 type="submit"
                 className="w-full"
-                // disabled={isSubmitting}
+                disabled={isSubmitting}
               >
-                Tạo tài khoản
+                Đăng nhập
               </Button>
 
               <div className="text-center text-sm">
-                Đã có tài khoản?{" "}
+                Chưa có tài khoản?{" "}
                 <a
-                  href="/signin"
+                  href="/signup"
                   className="underline underline-offset-4"
                 >
-                  Đăng nhập
+                  Đăng ký
                 </a>
               </div>
             </div>
           </form>
           <div className="relative hidden bg-muted md:block">
             <img
-              src="/placeholderSignUp.png"
+              src="/placeholderSignIn.png"
               alt="Image"
               className="absolute inset-0 h-full w-full object-cover"
             />

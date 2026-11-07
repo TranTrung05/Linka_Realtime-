@@ -1,0 +1,23 @@
+import api from "@/lib/axios"
+export const authService = {
+    signUp: async (username: string, password: string, email: string, firstname: string, lastname: string) => {
+        const res = await api.post(
+            "/auth/signup", 
+            { username, password, email, firstName: firstname, lastName: lastname }, 
+            {withCredentials: true}
+        );
+        return res.data;
+
+    },
+
+    signIn: async (username: string, password: string) => {
+        const res = await api.post(
+            "/auth/signin",
+            { username, password },
+            {withCredentials: true}
+        );
+        return res.data; // access token
+        
+    },
+
+}
