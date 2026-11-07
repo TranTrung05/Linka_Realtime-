@@ -102,8 +102,8 @@ export const signIn = async (req, res) => {
     // trả refresh token về trong cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true, // chỉ có thể truy cập cookie từ server, không thể truy cập từ client
-      secure: true, // chỉ gửi cookie qua HTTPS
-      sameSite: "none", // cho phép gửi cookie từ domain khác (cross-site)
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: REFRESH_TOKEN_TTL, // thời gian sống của cookie
     });
 
@@ -116,6 +116,40 @@ export const signIn = async (req, res) => {
     res
       .status(500)
       .json({ message: "Lỗi khi đăng nhập", error: error.message });
+  }
+};
+
+export const refresh = async (req, res) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) {
+      return res.status(401).json({ message: "Không tìm thấy refresh token" });
+    }
+
+    const session = await Session.findOne({
+      refreshToken,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!session) {
+      return res.status(401).json({ message: "Phiên đăng nhập đã hết hạn" });
+    }
+
+    const user = await User.findById(session.userId).select("-password");
+    if (!user) {
+      await Session.deleteOne({ refreshToken });
+      return res.status(401).json({ message: "User không tồn tại" });
+    }
+
+    const accessToken = jwt.sign(
+      { userId: user._id },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: ACCESS_TOKEN_TTL },
+    );
+
+    return res.status(200).json({ accessToken, user });
+  } catch (error) {
+    console.error("Lỗi khi làm mới access token", error);
+    return res.status(500).json({ message: "Lỗi hệ thống", error: error.message });
   }
 };
 

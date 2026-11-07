@@ -26,9 +26,10 @@ export function SignInForm({className, ...props}: React.ComponentProps<"div">) {
       const onSubmit = async(data: SignInFormValues) => {
         // Gọi BE để signin 
         const {username, password} = data;
-        await signIn(username, password);
-        
-        navigate("/");
+        const signedIn = await signIn(username, password);
+        if (signedIn) {
+          navigate("/", { replace: true });
+        }
         
       };
 
