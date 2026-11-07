@@ -11,4 +11,5 @@ username: string, password: string, email: string, firstname: string, lastname: 
     signIn: (username: string, password: string) => Promise<boolean>
     signOut: () => Promise<void>
     refreshSession: () => Promise<boolean>
+    fetchMe: () => Promise<void>
 }

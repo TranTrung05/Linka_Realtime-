@@ -38,6 +38,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const {accessToken, user} = await authService.signIn(username, password);
             setApiAccessToken(accessToken);
             set({accessToken, user});
+            await get().fetchMe();
             toast.success("Đăng nhập thành công!Chào mừng bạn quay trở lại với Linka!");
             return true;
         }catch(error){
@@ -56,7 +57,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             setApiAccessToken(accessToken);
             set({accessToken, user, loading: false});
             return true;
-        }catch(error){
+        }catch{
             get().clearState();
             return false;
         }
@@ -70,6 +71,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }catch(error){
             console.error(error);
             toast.error("Đăng xuất thất bại. Vui lòng thử lại sau.");
+        }
+    },
+
+    fetchMe: async() => {
+        try{
+            set({loading: true});
+            const user = await authService.fetchMe();
+            set({user});
+        }catch(error){
+            console.error(error);
+            set({user: null, accessToken: null});
+            toast.error("Lấy thông tin người dùng thất bại. Vui lòng thử lại sau.");
+        }finally{
+            set({loading: false});
         }
     }
 }));
