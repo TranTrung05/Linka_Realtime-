@@ -9,6 +9,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     user: null,
     loading: true,
 
+    setAccessToken: (accessToken) =>{
+        setApiAccessToken(accessToken);
+        set({accessToken});
+    },
     clearState: () => {
         setApiAccessToken(null);
         set({accessToken: null, user: null, loading: false});
@@ -36,7 +40,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try{
             set({loading: true});
             const {accessToken, user} = await authService.signIn(username, password);
-            setApiAccessToken(accessToken);
+            get().setAccessToken(accessToken);
             set({accessToken, user});
             await get().fetchMe();
             toast.success("Đăng nhập thành công!Chào mừng bạn quay trở lại với Linka!");
@@ -50,18 +54,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
     },
 
-    refreshSession: async () => {
-        try {
-            set({loading: true});
-            const {accessToken, user} = await authService.refresh();
-            setApiAccessToken(accessToken);
-            set({accessToken, user, loading: false});
-            return true;
-        }catch{
-            get().clearState();
-            return false;
-        }
-    },
+    // refreshSession: async () => {
+    //     try {
+    //         set({loading: true});
+    //         const {accessToken, user} = await authService.refresh();
+    //         setApiAccessToken(accessToken);
+    //         set({accessToken, user, loading: false});
+    //         return true;
+    //     }catch{
+    //         get().clearState();
+    //         return false;
+    //     }
+    // },
 
     signOut: async() => {
         try{
@@ -83,6 +87,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             console.error(error);
             set({user: null, accessToken: null});
             toast.error("Lấy thông tin người dùng thất bại. Vui lòng thử lại sau.");
+        }finally{
+            set({loading: false});
+        }
+    },
+
+    refresh : async() => {
+        try {
+            set({loading: true});
+            const {accessToken, user} = await authService.refresh();
+            get().setAccessToken(accessToken);
+            set({accessToken, user});
+        }catch(error){
+            console.error(error);
+            get().clearState();
+            const status = (error as {response?: {status?: number}}).response?.status;
+            if (status !== 401 && status !== 403) {
+                toast.error("Không thể khôi phục phiên đăng nhập. Vui lòng thử lại.");
+            }
         }finally{
             set({loading: false});
         }

@@ -1,17 +1,36 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore'
 import { Navigate, Outlet } from 'react-router';
 
 const ProtectRoute = () => {
-    const {accessToken, loading, refreshSession} = useAuthStore();
-    const started = useRef(false);
-
+    const {accessToken, user, loading, refresh, fetchMe} = useAuthStore();
+    const [starting, setStarting] = useState(true);
+    
     useEffect(() => {
-        if (!started.current && !accessToken) {
-            started.current = true;
-            void refreshSession();
-        }
-    }, [accessToken, refreshSession]);
+        let cancelled = false;
+
+        const init = async () => {
+            if (!accessToken) {
+                await refresh();
+            } else if (!user) {
+                await fetchMe();
+            }
+
+            if (!cancelled) {
+                setStarting(false);
+            }
+        };
+
+        void init();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [accessToken, user, refresh, fetchMe]);
+    
+    if (starting || loading) {
+        return <div className="flex h-screen items-center justify-center">Đang tải trang...</div>;
+    }
 
     if (loading) {
         return <div>Đang xác thực phiên đăng nhập...</div>;

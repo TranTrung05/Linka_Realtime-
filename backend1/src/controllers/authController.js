@@ -4,7 +4,7 @@ import Session from "../models/Session.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
-const ACCESS_TOKEN_TTL = "30m"; // 30 phút
+const ACCESS_TOKEN_TTL = "30s"; // 30 phút
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 
 // ý nghĩa dòng là : Định nghĩa một hàm async gọi là signUp
@@ -119,39 +119,41 @@ export const signIn = async (req, res) => {
   }
 };
 
-export const refresh = async (req, res) => {
-  try {
-    const refreshToken = req.cookies?.refreshToken;
-    if (!refreshToken) {
-      return res.status(401).json({ message: "Không tìm thấy refresh token" });
-    }
+// export const refresh = async (req, res) => {
+//   try {
+//     const refreshToken = req.cookies?.refreshToken;
+//     if (!refreshToken) {
+//       return res.status(401).json({ message: "Không tìm thấy refresh token" });
+//     }
 
-    const session = await Session.findOne({
-      refreshToken,
-      expiresAt: { $gt: new Date() },
-    });
-    if (!session) {
-      return res.status(401).json({ message: "Phiên đăng nhập đã hết hạn" });
-    }
+//     const session = await Session.findOne({
+//       refreshToken,
+//       expiresAt: { $gt: new Date() },
+//     });
+//     if (!session) {
+//       return res.status(401).json({ message: "Phiên đăng nhập đã hết hạn" });
+//     }
 
-    const user = await User.findById(session.userId).select("-password");
-    if (!user) {
-      await Session.deleteOne({ refreshToken });
-      return res.status(401).json({ message: "User không tồn tại" });
-    }
+//     const user = await User.findById(session.userId).select("-password");
+//     if (!user) {
+//       await Session.deleteOne({ refreshToken });
+//       return res.status(401).json({ message: "User không tồn tại" });
+//     }
 
-    const accessToken = jwt.sign(
-      { userId: user._id },
-      process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: ACCESS_TOKEN_TTL },
-    );
+//     const accessToken = jwt.sign(
+//       { userId: user._id },
+//       process.env.ACCESS_TOKEN_SECRET,
+//       { expiresIn: ACCESS_TOKEN_TTL },
+//     );
 
-    return res.status(200).json({ accessToken, user });
-  } catch (error) {
-    console.error("Lỗi khi làm mới access token", error);
-    return res.status(500).json({ message: "Lỗi hệ thống", error: error.message });
-  }
-};
+//     return res.status(200).json({ accessToken, user });
+//   } catch (error) {
+//     console.error("Lỗi khi làm mới access token", error);
+//     return res
+//       .status(500)
+//       .json({ message: "Lỗi hệ thống", error: error.message });
+//   }
+// };
 
 export const signOut = async (req, res) => {
   try {
@@ -169,5 +171,51 @@ export const signOut = async (req, res) => {
     res
       .status(500)
       .json({ message: "Lỗi khi đăng xuất", error: error.message });
+  }
+};
+// tạo access token mới từ refresh token, nếu refresh token hợp lệ và chưa hết hạn
+export const refreshToken = async (req, res) => {
+  try {
+    // lấy refresh token từ cookie
+    const token = req.cookies?.refreshToken;
+    if (!token) {
+      res.clearCookie("refreshToken");
+      return res.status(401).json({ message: "Token không tồn tại" });
+    }
+
+    // so với refreshToken trong DB , nếu hợp lệ thì tạo access token mới và trả về cho client
+    const session = await Session.findOne({ refreshToken: token });
+    if (!session) {
+      res.clearCookie("refreshToken");
+      return res
+        .status(403)
+        .json({ message: "Token không hợp lệ hoặc đã hết hạn" });
+    }
+    // kiểm tra hết hạn chưa
+    if (session.expiresAt < new Date()) {
+      await Session.deleteOne({ refreshToken: token });
+      res.clearCookie("refreshToken");
+      return res.status(403).json({ message: "Token đã hết hạn" });
+    }
+    // tạo access token mới
+    const accessToken = jwt.sign(
+      { userId: session.userId },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: ACCESS_TOKEN_TTL },
+    );
+
+    const user = await User.findById(session.userId).select("-password");
+    if (!user) {
+      await Session.deleteOne({ refreshToken: token });
+      res.clearCookie("refreshToken");
+      return res.status(403).json({ message: "User không tồn tại" });
+    }
+
+    // return
+    return res.status(200).json({ accessToken, user });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Lỗi khi làm mới token", error: error.message });
   }
 };
